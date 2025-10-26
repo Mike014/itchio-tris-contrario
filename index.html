@@ -53,7 +53,7 @@
       border-bottom: 1px solid var(--border);
     }
 
-    /* ENTITÀ font: changes only when client.js adds .entita-voice */
+    /* ENTITÀ font (toggled by client.js .entita-voice) */
     @font-face{
       font-family: 'Entita';
       src: url('font/entity.ttf') format('truetype');
@@ -66,15 +66,30 @@
       letter-spacing: .03em;
     }
 
-    /* Command bar */
+    /* Command bar (now two rows) */
     #bar{
-      display: flex;
-      gap: 8px;
       padding: 12px;
       background: #0f141b;
       border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #bar-top{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    #bar-bottom{
+      display: flex;
+      gap: 8px;
+      justify-content: center;   /* <- centered bottom row */
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
       flex-wrap: wrap;
     }
+
     #in{
       flex: 1 1 340px;
       height: 40px;
@@ -84,8 +99,10 @@
       background: #0a0f14;
       color: var(--fg);
       outline: none;
+      min-width: 240px;
     }
     #in::placeholder{ color: var(--muted); }
+
     button{
       height: 40px;
       padding: 0 12px;
@@ -100,7 +117,7 @@
     button.tris:hover{ border-color: #5a2d50; background: #22131f; }
     button.riddle{ border-color: #3b2c7a; background: #17122a; color: #c9b6ff; }
     button.riddle:hover{ border-color: #5b47af; background: #1e1737; }
-    #status{ margin-left: auto; color: var(--muted); align-self: center; font-size: 12px; }
+    #status{ margin-left: auto; color: var(--muted); font-size: 12px; }
 
     /* Path / Riddles panel */
     #riddles{
@@ -171,7 +188,7 @@
       margin: 0 0 8px 0;
       font-size: 14px;
       font-weight: 800;
-      color: #ff7ab3; /* echoes .tris accent */
+      color: #ff7ab3;
       letter-spacing: .02em;
     }
     .gamecard ul{
@@ -197,22 +214,26 @@
       <!-- Console -->
       <div id="out"></div>
 
-      <!-- Command bar -->
+      <!-- Command bar (two rows) -->
       <div id="bar">
-        <input id="in" placeholder='type here... (e.g. "help", "ls", "exit")' autocomplete="off" />
-        <button id="run"  title="Run echo.py">Run echo.py</button>
-        <button id="stop" title="Stop">Stop</button>
-        <button id="btn-tris" class="tris" title="Launch Tris-Al-Contrario">Run Tris-Al-Contrario</button>
-        <button id="btn-riddles" class="riddle" title="Path E → C → O">Path (E → C → O)</button>
-        <!-- NEW: Triss Rollback rules toggle -->
-        <button id="btn-game" class="tris" title="Show Triss Rollback rules">Triss Rollback (rules)</button>
-        <span id="status"></span>
+        <!-- TOP ROW -->
+        <div id="bar-top">
+          <input id="in" placeholder='type here... (e.g. "help", "ls", "exit")' autocomplete="off" />
+          <button id="run"  title="Run echo.py">Run echo.py</button>
+          <button id="stop" title="Stop">Stop</button>
+          <button id="btn-tris" class="tris" title="Launch Reverse Tic-Tac-Toe">Run Reverse Tic-Tac-Toe</button>
+          <span id="status"></span>
+        </div>
+        <!-- BOTTOM ROW (centered) -->
+        <div id="bar-bottom">
+          <button id="btn-riddles" class="riddle" title="Path E → C → O">Path (E → C → O)</button>
+          <button id="btn-game" class="tris" title="Show Reverse Tic-Tac-Toe rules">Reverse Tic-Tac-Toe (rules)</button>
+        </div>
       </div>
 
       <!-- Path / Riddles Panel -->
       <div id="riddles">
         <div class="riddle-wrap">
-
           <!-- Phase E -->
           <div class="riddle" id="riddle-e">
             <span class="phase-badge">PHASE E • EMERGENCE</span>
@@ -251,33 +272,32 @@ and watch how the presence takes shape.
             </p>
             <div class="hint-line">Operational hint: upon completing contact, a diegetic notification appears and the font shifts (unlock <code>UNLOCK:O</code>).</div>
           </div>
-
         </div>
       </div>
 
-      <!-- NEW: Triss Rollback (Tris-al-Contrario) Guide -->
+      <!-- Reverse Tic-Tac-Toe Guide -->
       <div id="game-guide">
-        <div class="gamecard" id="triss-rollback">
-          <h3>TRISS ROLLBACK • RULES <small>(Tris-al-Contrario)</small></h3>
+        <div class="gamecard" id="Reverse Tic-Tac-Toe">
+          <h3>Reverse Tic-Tac-Toe • RULES</h3>
           <p>
-In Triss Rollback, completing a three-in-a-row (a “tris”) gives the point to your OPPONENT — except in the special case of a <em>Double Trap</em>, where the player who completes the tris earns the point instead.
+In Reverse Tic-Tac-Toe, completing a three-in-a-row (a “tris”) gives the point to your OPPONENT — except in the special case of a <em>Double Trap</em>, where the player who completes the tris earns the point instead.
           </p>
           <ul>
             <li><strong>Scoring:</strong> First to <strong>3 points</strong> wins the match.</li>
             <li><strong>Flip rule:</strong> Your symbol flips each turn (X ↔ O).</li>
             <li><strong>Double Trap:</strong> If your move creates/completes two simultaneous imminent threats, you keep the point on completing the tris.</li>
-            <li><strong>Modes:</strong> 
-              <br>1) Human vs Offensive AI 
-              <br>2) Random AI vs Defensive AI (demo) 
-              <br>3) Offensive AI vs Offensive AI (demo) 
-              <br>4) Benchmark (100 matches) 
+            <li><strong>Modes:</strong>
+              <br>1) Human vs Offensive AI
+              <br>2) Random AI vs Defensive AI (demo)
+              <br>3) Offensive AI vs Offensive AI (demo)
+              <br>4) Benchmark (100 matches)
               <br>5) Extended Benchmark (1000)
             </li>
             <li><strong>Riddle unlock (diegetic):</strong> Win <strong>3 matches</strong> in Mode 1 (Human vs Offensive AI) to reveal the hidden “riddle resolution” screen.</li>
           </ul>
-          <div class="hint-line">Operational hint: start a match from the bar above (<em>Run Tris-Al-Contrario</em>) or via the button below. Your progress toward the riddle unlock is tracked within the current session.</div>
+          <div class="hint-line">Operational hint: start a match from the top bar (<em>Run Reverse Tic-Tac-Toe</em>) or via the button below. Your progress toward the riddle unlock is tracked in the current session.</div>
           <div class="game-actions">
-            <button id="play-triss" class="tris" title="Launch Triss-Al-Contrario now">Play now</button>
+            <button id="play-triss" class="tris" title="Launch Reverse Tic-Tac-Toe now">Play now</button>
           </div>
         </div>
       </div>
@@ -288,7 +308,7 @@ In Triss Rollback, completing a three-in-a-row (a “tris”) gives the point to
   <!-- Client -->
   <script src="client.js"></script>
   <script>
-    // Start Tris (optional)
+    // Start game (optional)
     const btnTris = document.getElementById('btn-tris');
     if (btnTris) btnTris.addEventListener('click', () => {
       if (typeof start === 'function') start('/python/Tris-Al-Contrario.py');
@@ -303,16 +323,16 @@ In Triss Rollback, completing a three-in-a-row (a “tris”) gives the point to
       btnRiddles.textContent = visible ? 'Path (E → C → O)' : 'Hide path';
     });
 
-    // NEW: Toggle Triss Rollback rules panel
+    // Toggle Reverse Tic-Tac-Toe rules panel
     const gameGuide = document.getElementById('game-guide');
     const btnGame = document.getElementById('btn-game');
     btnGame.addEventListener('click', () => {
       const visible = gameGuide.style.display === 'block';
       gameGuide.style.display = visible ? 'none' : 'block';
-      btnGame.textContent = visible ? 'Triss Rollback (rules)' : 'Hide Triss Rollback';
+      btnGame.textContent = visible ? 'Reverse Tic-Tac-Toe (rules)' : 'Hide Reverse Tic-Tac-Toe';
     });
 
-    // NEW: Internal "Play now" button inside the game card
+    // Internal "Play now" button
     const playBtn = document.getElementById('play-triss');
     if (playBtn) playBtn.addEventListener('click', () => {
       if (typeof start === 'function') start('/python/Tris-Al-Contrario.py');
