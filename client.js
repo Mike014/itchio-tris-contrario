@@ -1,8 +1,13 @@
+// client.js
 let ws = null;
 const out = document.getElementById('out');
 const inp = document.getElementById('in');
 const btnRun = document.getElementById('run');
 const btnStop = document.getElementById('stop');
+
+// stato semplice per sblocchi
+const PHASE = { E: true, C: false, O: false }; // E parte attiva per default
+let playerName = null; // da VAR:io=<nome>
 
 function wsUrl(cmd){
   const u = new URL(location.href);
@@ -17,10 +22,10 @@ function start(cmd='/python/echo.py'){
   out.textContent = '';
   print(`> python ${cmd}`);
   ws = new WebSocket(wsUrl(cmd));
-  ws.onopen   = () => print('[WS] Connesso');
-  ws.onmessage= (e) => print(e.data ?? '');
-  ws.onerror  = () => print('[WS] Errore');
-  ws.onclose  = () => { print('[WS] Chiuso'); ws = null; };
+  ws.onopen    = () => print('[WS] Connesso');
+  ws.onmessage = (e) => print(e.data ?? '');
+  ws.onerror   = () => print('[WS] Errore');
+  ws.onclose   = () => { print('[WS] Chiuso'); ws = null; resetPhaseUi(); };
 }
 
 function stop(){
@@ -45,7 +50,7 @@ function print(s){
   for (const line of lines){
     const node = renderLine(line);
     if (node === null){
-      // segnale di CLEAR
+      // segnale CLEAR
       out.textContent = '';
       continue;
     }
@@ -60,40 +65,89 @@ function print(s){
 }
 
 function renderLine(line){
-  const L = String(line).trim();
-
+  const raw = String(line);
+  const L = raw.trim();
   if (!L) return document.createTextNode('');
 
-  // Protocollo semplice KIND:payload
-  if (L.startsWith('CLEAR:')){
-    return null; // handled by print()
-  }
+  // CLEAR:
+  if (L.startsWith('CLEAR:')) return null;
 
+  // LINK:
   if (L.startsWith('LINK:')){
     const url = L.slice(5).trim();
     const span = document.createElement('span');
     const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noreferrer';
+    a.href = url; a.target = '_blank'; a.rel = 'noreferrer';
     a.textContent = url;
     span.appendChild(document.createTextNode('🔗 '));
     span.appendChild(a);
     return span;
   }
 
+  // HINT:
   if (L.startsWith('HINT:')){
-    const msg = L.slice(5).trim();
-    return document.createTextNode('💡 ' + msg);
+    return document.createTextNode('💡 ' + L.slice(5).trim());
   }
 
+  // ALERT:
   if (L.startsWith('ALERT:')){
-    const msg = L.slice(6).trim();
-    return document.createTextNode('‼ ' + msg);
+    return document.createTextNode('‼ ' + L.slice(6).trim());
   }
 
-  // Default: testo grezzo come prima
-  return document.createTextNode(line);
+  // FLAG:
+  if (L.startsWith('FLAG:')){
+    const flag = L.slice(5).trim();
+    return document.createTextNode('🏴 Sbloccato: ' + flag);
+  }
+
+  // VAR: (es. VAR:io=<nome>)
+  if (L.startsWith('VAR:')){
+    const payload = L.slice(4).trim();
+    const m = /^io\s*=\s*(.+)$/.exec(payload);
+    if (m) {
+      playerName = m[1].trim();
+    }
+    return document.createTextNode('[VAR] ' + payload);
+  }
+
+  // UNLOCK:
+  if (L.startsWith('UNLOCK:')){
+    const payload = L.slice(7).trim(); // C | O | ecc.
+    onUnlock(payload);
+    const span = document.createElement('span');
+    span.textContent = '🔓 Sblocco: ' + payload;
+    span.dataset.unlock = payload;
+    return span;
+  }
+
+  // default: testo grezzo
+  return document.createTextNode(raw);
+}
+
+/* ------------------------------ PHASE UI -------------------------------- */
+
+function onUnlock(tag){
+  if (tag === 'C'){
+    PHASE.C = true; PHASE.E = false;
+    // nessun cambio font qui — avviene solo su O
+    return;
+  }
+  if (tag === 'O'){
+    PHASE.O = true; PHASE.C = true; PHASE.E = false;
+    // cambia font quando la fase O è sbloccata (cioè dopo aver superato E e C)
+    setEntitaFont(true);
+    return;
+  }
+}
+
+function setEntitaFont(on){
+  out.classList.toggle('entita-voice', !!on);
+}
+
+function resetPhaseUi(){
+  // quando chiudiamo la WS, torniamo allo stato base
+  PHASE.E = true; PHASE.C = false; PHASE.O = false;
+  setEntitaFont(false);
 }
 
 /* ------------------------------ UI BINDINGS ----------------------------- */
