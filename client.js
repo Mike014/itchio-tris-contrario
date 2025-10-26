@@ -17,10 +17,12 @@ function wsUrl(cmd){
   return u.href;
 }
 
-btnRun.onclick  = async () => {
-  await ensureNotificationPermission(); // ask permission tied to user gesture
+btnRun.onclick = () => {
+  // fire-and-forget: chiedi il permesso ma NON bloccare l'avvio di echo.py
+  try { ensureNotificationPermission(); } catch {}
   start('/python/echo.py');
 };
+
 btnStop.onclick = () => stop();
 
 function start(cmd='/python/echo.py'){
