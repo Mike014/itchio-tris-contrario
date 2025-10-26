@@ -4,353 +4,400 @@ print = functools.partial(print, flush=True)
 
 import random
 
-def stampa_griglia(g):
+# ================== RIDDLE: DECLARATIONS & UI ==================
+# Session counter: Human wins against Offensive AI (Mode 1)
+HUMAN_WINS_VS_OFFENSIVE = 0
+
+# Text shown when the riddle unlocks.
+# Replace it with your final solution text when ready.
+RIDDLE_SOLUTION = """
+=== RIDDLE RESOLUTION ===
+
+You unlocked this screen by winning 3 FULL MATCHES
+in Mode 1: Human vs Offensive AI.
+
+How you got here:
+- In "reverse" Tris, completing a tris gives the POINT to the OPPONENT,
+  except in the DOUBLE TRAP case.
+- To win a MATCH you need 3 points. Here, the human defeated the Offensive AI
+  across 3 matches in this mode during the current session.
+
+[Put the final textual SOLUTION of the riddle here]
+"""
+
+def show_riddle_resolution():
+    print("\n" + "="*60)
+    print("🧩  RIDDLE UNLOCKED")
+    print("="*60 + "\n")
+    print(RIDDLE_SOLUTION.strip())
+    print("\n" + "="*60 + "\n")
+# ================================================================
+
+
+def print_board(b):
     def cell(i):
-        return g[i] if g[i] != " " else str(i+1)
+        return b[i] if b[i] != " " else str(i+1)
     print(f"\n {cell(0)} | {cell(1)} | {cell(2)}")
     print("---+---+---")
     print(f" {cell(3)} | {cell(4)} | {cell(5)}")
     print("---+---+---")
     print(f" {cell(6)} | {cell(7)} | {cell(8)}\n")
 
-LINEE = [(0,1,2),(3,4,5),(6,7,8),
+LINES = [(0,1,2),(3,4,5),(6,7,8),
          (0,3,6),(1,4,7),(2,5,8),
          (0,4,8),(2,4,6)]
 
-def tris_fatto(g, sym):
-    for a,b,c in LINEE:
-        if g[a] == sym and g[b] == sym and g[c] == sym:
+def has_tris(b, sym):
+    for a,b2,c in LINES:
+        if b[a] == sym and b[b2] == sym and b[c] == sym:
             return True
     return False
 
-def mosse_libere(g):
-    return [i for i in range(9) if g[i] == " "]
+def free_moves(b):
+    return [i for i in range(9) if b[i] == " "]
 
-def conta_minacce(g, sym):
-    """Conta quante linee hanno 2 simboli uguali e 1 spazio vuoto"""
-    minacce = []
-    for a,b,c in LINEE:
-        riga = [g[a], g[b], g[c]]
-        if riga.count(sym) == 2 and riga.count(" ") == 1:
-            for pos in [a,b,c]:
-                if g[pos] == " ":
-                    minacce.append(pos)
-    return minacce
+def count_threats(b, sym):
+    """Counts how many lines have 2 equal symbols and 1 empty space"""
+    threats = []
+    for a,b2,c in LINES:
+        row = [b[a], b[b2], b[c]]
+        if row.count(sym) == 2 and row.count(" ") == 1:
+            for pos in (a,b2,c):
+                if b[pos] == " ":
+                    threats.append(pos)
+    return threats
 
-# ========== IA LIVELLO 1: RANDOM ==========
-def ia_random(g, sym):
-    """Sceglie una mossa casuale tra quelle disponibili"""
-    return random.choice(mosse_libere(g))
+# ========== AI LEVEL 1: RANDOM ==========
+def ai_random(b, sym):
+    """Pick a random legal move"""
+    return random.choice(free_moves(b))
 
-# ========== IA LIVELLO 2: DIFENSIVA ==========
-def ia_difensiva(g, sym, prossimo_sym_avversario):
+# ========== AI LEVEL 2: DEFENSIVE ==========
+def ai_defensive(b, sym, opp_next_sym):
     """
-    Strategia:
-    1. EVITA di completare tris (perché daresti punto all'avversario)
-    2. Se l'avversario ha una minaccia col SUO prossimo simbolo, bloccala
-    3. Altrimenti mossa casuale
+    Strategy:
+    1. AVOID completing a tris (it would give a point to the opponent)
+    2. If the opponent has a threat with THEIR next symbol, block it
+    3. Otherwise, pick a random safe move
     """
-    libere = mosse_libere(g)
-    
-    # 1. Filtra mosse che NON completano tris
-    mosse_sicure = []
-    for pos in libere:
-        g[pos] = sym
-        if not tris_fatto(g, sym):
-            mosse_sicure.append(pos)
-        g[pos] = " "
-    
-    if not mosse_sicure:
-        return random.choice(libere)
-    
-    # 2. Blocca minacce dell'avversario
-    minacce_avv = conta_minacce(g, prossimo_sym_avversario)
-    blocchi_utili = [m for m in minacce_avv if m in mosse_sicure]
-    if blocchi_utili:
-        return random.choice(blocchi_utili)
-    
-    # 3. Mossa casuale sicura
-    return random.choice(mosse_sicure)
+    moves = free_moves(b)
 
-# ========== IA LIVELLO 3: OFFENSIVA ==========
-def ia_offensiva(g, sym, prossimo_mio_sym, prossimo_sym_avversario):
+    # 1. Filter moves that DO NOT complete a tris
+    safe = []
+    for pos in moves:
+        b[pos] = sym
+        if not has_tris(b, sym):
+            safe.append(pos)
+        b[pos] = " "
+
+    if not safe:
+        return random.choice(moves)
+
+    # 2. Block opponent threats
+    opp_threats = count_threats(b, opp_next_sym)
+    useful_blocks = [m for m in opp_threats if m in safe]
+    if useful_blocks:
+        return random.choice(useful_blocks)
+
+    # 3. Random safe move
+    return random.choice(safe)
+
+# ========== AI LEVEL 3: OFFENSIVE ==========
+def ai_offensive(b, sym, my_next_sym, opp_next_sym):
     """
-    Strategia avanzata:
-    1. EVITA di completare tris (tranne se è trappola doppia)
-    2. Cerca di creare minacce con il simbolo del prossimo turno
-    3. Blocca minacce dell'avversario
-    4. Gioca al centro se libero
-    5. Altrimenti casuale
+    Advanced strategy:
+    1. AVOID completing a tris (unless it's a double trap)
+    2. Try to create threats with the NEXT-turn symbol
+    3. Block opponent threats
+    4. Take the center if free
+    5. Otherwise, pick a versatile move
     """
-    libere = mosse_libere(g)
-    
-    # 1. Filtra mosse sicure (non completano tris)
-    mosse_sicure = []
-    for pos in libere:
-        g[pos] = sym
-        if not tris_fatto(g, sym):
-            mosse_sicure.append(pos)
-        g[pos] = " "
-    
-    if not mosse_sicure:
-        return random.choice(libere)
-    
-    # 2. Cerca di preparare una minaccia per il PROSSIMO turno
-    mosse_setup = []
-    for pos in mosse_sicure:
-        g[pos] = sym
-        
-        # Conta quante linee avrebbero 1 simbolo del mio prossimo tipo
-        potenziale = 0
-        for a,b,c in LINEE:
-            riga = [g[a], g[b], g[c]]
-            if riga.count(prossimo_mio_sym) == 1 and riga.count(" ") == 2:
-                potenziale += 1
-        
-        if potenziale >= 2:
-            mosse_setup.append(pos)
-        
-        g[pos] = " "
-    
-    if mosse_setup:
-        return random.choice(mosse_setup)
-    
-    # 3. Blocca minacce avversario
-    minacce_avv = conta_minacce(g, prossimo_sym_avversario)
-    blocchi = [m for m in minacce_avv if m in mosse_sicure]
-    if blocchi:
-        return random.choice(blocchi)
-    
-    # 4. Centro se libero
-    if 4 in mosse_sicure:
+    moves = free_moves(b)
+
+    # 1. Safe moves (do not complete a tris)
+    safe = []
+    for pos in moves:
+        b[pos] = sym
+        if not has_tris(b, sym):
+            safe.append(pos)
+        b[pos] = " "
+
+    if not safe:
+        return random.choice(moves)
+
+    # 2. Prepare a NEXT-turn threat
+    setups = []
+    for pos in safe:
+        b[pos] = sym
+
+        potential = 0
+        for a,b2,c in LINES:
+            row = [b[a], b[b2], b[c]]
+            if row.count(my_next_sym) == 1 and row.count(" ") == 2:
+                potential += 1
+
+        if potential >= 2:
+            setups.append(pos)
+
+        b[pos] = " "
+
+    if setups:
+        return random.choice(setups)
+
+    # 3. Block opponent threats
+    opp_threats = count_threats(b, opp_next_sym)
+    blocks = [m for m in opp_threats if m in safe]
+    if blocks:
+        return random.choice(blocks)
+
+    # 4. Center if free
+    if 4 in safe:
         return 4
-    
-    # 5. Angoli (più versatili)
-    angoli = [0,2,6,8]
-    angoli_liberi = [a for a in angoli if a in mosse_sicure]
-    if angoli_liberi:
-        return random.choice(angoli_liberi)
-    
-    return random.choice(mosse_sicure)
 
-# ========== ENGINE DI GIOCO (CON FIX TRAPPOLA DOPPIA) ==========
-def round_tris_al_contrario(tipo_a, tipo_b, starter, verbose=True):
+    # 5. Corners (more versatile)
+    corners = [0,2,6,8]
+    free_corners = [a for a in corners if a in safe]
+    if free_corners:
+        return random.choice(free_corners)
+
+    return random.choice(safe)
+
+# ========== GAME ENGINE (WITH DOUBLE TRAP FIX) ==========
+def round_reverse_tris(type_a, type_b, starter, verbose=True):
     """
-    tipo_a, tipo_b: "umano", "random", "difensiva", "offensiva"
-    starter: "A" o "B"
+    type_a, type_b: "human", "random", "defensive", "offensive"
+    starter: "A" or "B"
     """
-    griglia = [" "] * 9
-    giocatore = starter
-    prossimo_simbolo = {"A": "X" if starter == "A" else "O",
-                        "B": "O" if starter == "A" else "X"}
-    
-    mosse_fatte = 0
-    vincitore_passa_punto = None
-    
+    board = [" "] * 9
+    player = starter
+    next_symbol = {"A": "X" if starter == "A" else "O",
+                   "B": "O" if starter == "A" else "X"}
+
+    moves_made = 0
+    point_receiver = None
+
     while True:
         if verbose:
-            stampa_griglia(griglia)
-        
-        sym = prossimo_simbolo[giocatore]
-        tipo = tipo_a if giocatore == "A" else tipo_b
-        
-        avversario = "B" if giocatore == "A" else "A"
-        prossimo_sym_avversario = prossimo_simbolo[avversario]
-        prossimo_mio_sym = "O" if sym == "X" else "X"
-        
-        # Scelta mossa
-        if tipo == "umano":
-            if verbose:
-                print(f"Giocatore {giocatore} (simbolo {sym}) - prossimo turno userai: {prossimo_mio_sym}")
-            scelta_valida = False
-            while not scelta_valida:
-                try:
-                    s = input(f"Scegli casella [1-9]: ").strip()
-                    pos = int(s) - 1
-                    if 0 <= pos <= 8 and griglia[pos] == " ":
-                        scelta_valida = True
-                    else:
-                        print("Mossa non valida.")
-                except:
-                    print("Inserisci un numero da 1 a 9.")
-        
-        elif tipo == "random":
-            pos = ia_random(griglia, sym)
-            if verbose:
-                print(f"IA Random {giocatore} gioca in posizione {pos+1}")
-        
-        elif tipo == "difensiva":
-            pos = ia_difensiva(griglia, sym, prossimo_sym_avversario)
-            if verbose:
-                print(f"IA Difensiva {giocatore} gioca in posizione {pos+1}")
-        
-        elif tipo == "offensiva":
-            pos = ia_offensiva(griglia, sym, prossimo_mio_sym, prossimo_sym_avversario)
-            if verbose:
-                print(f"IA Offensiva {giocatore} gioca in posizione {pos+1}")
-        
-        # Piazza
-        griglia[pos] = sym
-        mosse_fatte += 1
-        
-        # ===== FIX #2: CHECK TRAPPOLA DOPPIA =====
-        minacce_create = len(conta_minacce(griglia, sym))
-        trappola_doppia = minacce_create >= 2
-        
-        # Check tris
-        if tris_fatto(griglia, sym):
-            if trappola_doppia:
-                # TRAPPOLA DOPPIA: punto al giocatore che ha creato la situazione
-                vincitore_passa_punto = giocatore
-                if verbose:
-                    stampa_griglia(griglia)
-                    print(f"⚡ TRAPPOLA DOPPIA! {giocatore} completa tris con '{sym}' → Punto a {giocatore}!")
-            else:
-                # Regola normale: punto all'avversario
-                vincitore_passa_punto = avversario
-                if verbose:
-                    stampa_griglia(griglia)
-                    print(f"Tris completato da {giocatore} con '{sym}' → Punto a {avversario}!")
-            break
-        
-        # Pareggio
-        if mosse_fatte == 9:
-            if verbose:
-                stampa_griglia(griglia)
-                print("Nessun tris: round patta.")
-            break
-        
-        # Flip simbolo
-        prossimo_simbolo[giocatore] = "O" if sym == "X" else "X"
-        
-        # Cambio turno
-        giocatore = avversario
-    
-    return vincitore_passa_punto, mosse_fatte
+            print_board(board)
 
-# ========== PARTITA (CON FIX #1: ALTERNANZA STARTER) ==========
-def partita(tipo_a="umano", tipo_b="offensiva", max_punti=3, verbose=True, primo_starter="A"):
+        sym = next_symbol[player]
+        ptype = type_a if player == "A" else type_b
+
+        opponent = "B" if player == "A" else "A"
+        opp_next_sym = next_symbol[opponent]
+        my_next_sym = "O" if sym == "X" else "X"
+
+        # Move selection
+        if ptype == "human":
+            if verbose:
+                print(f"Player {player} (symbol {sym}) — next turn you'll use: {my_next_sym}")
+            valid = False
+            while not valid:
+                try:
+                    s = input("Choose a cell [1-9]: ").strip()
+                    pos = int(s) - 1
+                    if 0 <= pos <= 8 and board[pos] == " ":
+                        valid = True
+                    else:
+                        print("Invalid move.")
+                except:
+                    print("Enter a number from 1 to 9.")
+
+        elif ptype == "random":
+            pos = ai_random(board, sym)
+            if verbose:
+                print(f"Random AI {player} plays at {pos+1}")
+
+        elif ptype == "defensive":
+            pos = ai_defensive(board, sym, opp_next_sym)
+            if verbose:
+                print(f"Defensive AI {player} plays at {pos+1}")
+
+        elif ptype == "offensive":
+            pos = ai_offensive(board, sym, my_next_sym, opp_next_sym)
+            if verbose:
+                print(f"Offensive AI {player} plays at {pos+1}")
+
+        # Place
+        board[pos] = sym
+        moves_made += 1
+
+        # ===== DOUBLE TRAP CHECK =====
+        created_threats = len(count_threats(board, sym))
+        double_trap = created_threats >= 2
+
+        # Tris check
+        if has_tris(board, sym):
+            if double_trap:
+                # DOUBLE TRAP: point goes to the player who created it
+                point_receiver = player
+                if verbose:
+                    print_board(board)
+                    print(f"⚡ DOUBLE TRAP! {player} completes tris with '{sym}' → Point to {player}!")
+            else:
+                # Normal rule: point to the opponent
+                point_receiver = opponent
+                if verbose:
+                    print_board(board)
+                    print(f"Tris completed by {player} with '{sym}' → Point to {opponent}!")
+            break
+
+        # Draw
+        if moves_made == 9:
+            if verbose:
+                print_board(board)
+                print("No tris: round drawn.")
+            break
+
+        # Flip symbol
+        next_symbol[player] = "O" if sym == "X" else "X"
+
+        # Switch turn
+        player = opponent
+
+    return point_receiver, moves_made
+
+# ========== MATCH (WITH STARTER ALTERNATION FIX) ==========
+def match(type_a="human", type_b="offensive", max_points=3, verbose=True, first_starter="A"):
     """
-    Esempio:
-    - tipo_a="umano", tipo_b="offensiva"  → Tu vs IA forte
-    - tipo_a="random", tipo_b="difensiva" → IA debole vs IA media
-    - tipo_a="offensiva", tipo_b="offensiva" → IA vs IA (per benchmark)
-    
-    primo_starter: "A" o "B" - chi inizia il primo round della partita
+    Examples:
+    - type_a="human", type_b="offensive"  → You vs strong AI
+    - type_a="random", type_b="defensive" → Weak AI vs medium AI
+    - type_a="offensive", type_b="offensive" → AI vs AI (benchmark)
+
+    first_starter: "A" or "B" — who starts the first round of the match
     """
-    punteggio = {"A": 0, "B": 0}
-    starter = primo_starter  # ===== FIX #1: starter parametrizzato =====
+    score = {"A": 0, "B": 0}
+    starter = first_starter  # parameterized starter
     log_rounds = []
-    
+
     while True:
         if verbose:
             print(f"\n{'='*60}")
-            print(f"Nuovo round | Starter: {starter} | Punti: A={punteggio['A']} B={punteggio['B']}")
+            print(f"New round | Starter: {starter} | Score: A={score['A']} B={score['B']}")
             print(f"{'='*60}")
-        
-        assegnato, mosse = round_tris_al_contrario(tipo_a, tipo_b, starter, verbose)
-        log_rounds.append({"starter": starter, "mosse": mosse, "vincitore": assegnato})
-        
-        if assegnato:
-            punteggio[assegnato] += 1
+
+        receiver, moves = round_reverse_tris(type_a, type_b, starter, verbose)
+        log_rounds.append({"starter": starter, "moves": moves, "receiver": receiver})
+
+        if receiver:
+            score[receiver] += 1
             if verbose:
-                print(f"→ Punto assegnato a {assegnato}. Punteggio: A={punteggio['A']} B={punteggio['B']}")
-        
-        # Check vittoria
-        if punteggio["A"] >= max_punti:
+                print(f"→ Point assigned to {receiver}. Score: A={score['A']} B={score['B']}")
+
+        # Victory check
+        if score["A"] >= max_points:
             if verbose:
-                print(f"\n🏆 Fine partita: A ha {max_punti} punti. Vince B!")
+                print(f"\n🏆 End of match: A has {max_points} points. B wins!")
             return "B", log_rounds
-        if punteggio["B"] >= max_punti:
+        if score["B"] >= max_points:
             if verbose:
-                print(f"\n🏆 Fine partita: B ha {max_punti} punti. Vince A!")
+                print(f"\n🏆 End of match: B has {max_points} points. A wins!")
             return "A", log_rounds
-        
-        # Alterna starter
+
+        # Alternate starter
         starter = "B" if starter == "A" else "A"
-        
-        # Se entrambi sono IA, continua automaticamente
-        if tipo_a != "umano" and tipo_b != "umano":
+
+        # If both are AIs, continue automatically
+        if type_a != "human" and type_b != "human":
             continue
-        
-        # Altrimenti chiedi conferma
-        cont = input("\nContinuare? [Invio=si / n=no] ").strip().lower()
+
+        # Otherwise ask to continue
+        cont = input("\nContinue? [Enter=yes / n=no] ").strip().lower()
         if cont == "n":
             if verbose:
-                print("Partita interrotta.")
+                print("Match interrupted.")
             return None, log_rounds
 
-# ========== BENCHMARK (CON FIX #1: ALTERNANZA STARTER TRA PARTITE) ==========
-def benchmark(tipo_a, tipo_b, n_partite=100):
-    """Esegue N partite e stampa statistiche"""
-    print(f"\n🔬 Benchmark: {tipo_a} vs {tipo_b} ({n_partite} partite)")
-    print(f"   [Fix Alternanza Starter: metà partite inizia A, metà B]\n")
-    
-    vittorie = {"A": 0, "B": 0}
-    totale_rounds = 0
-    totale_mosse = 0
-    hand_offs = 0
-    trappole_doppie = 0
-    
-    for i in range(n_partite):
-        # ===== FIX #1: Alterna primo_starter ogni partita =====
-        primo = "A" if i % 2 == 0 else "B"
-        vincitore, log = partita(tipo_a, tipo_b, max_punti=3, verbose=False, primo_starter=primo)
-        
-        if vincitore:
-            vittorie[vincitore] += 1
-        
-        totale_rounds += len(log)
+# ========== BENCHMARK (WITH STARTER ALTERNATION BETWEEN MATCHES) ==========
+def benchmark(type_a, type_b, n_matches=100):
+    """Run N matches and print stats"""
+    print(f"\n🔬 Benchmark: {type_a} vs {type_b} ({n_matches} matches)")
+    print("   [Starter Alternation: half start with A, half with B]\n")
+
+    wins = {"A": 0, "B": 0}
+    total_rounds = 0
+    total_moves = 0
+    handoffs = 0
+
+    for i in range(n_matches):
+        # Alternate first starter each match
+        first = "A" if i % 2 == 0 else "B"
+        winner, log = match(type_a, type_b, max_points=3, verbose=False, first_starter=first)
+
+        if winner:
+            wins[winner] += 1
+
+        total_rounds += len(log)
         for r in log:
-            totale_mosse += r["mosse"]
-            if r["vincitore"] is not None:
-                hand_offs += 1
-    
-    print(f"Vittorie A ({tipo_a}): {vittorie['A']} ({vittorie['A']/n_partite*100:.1f}%)")
-    print(f"Vittorie B ({tipo_b}): {vittorie['B']} ({vittorie['B']/n_partite*100:.1f}%)")
-    print(f"\nMedia round per partita: {totale_rounds/n_partite:.1f}")
-    print(f"Media mosse per round: {totale_mosse/totale_rounds:.1f}")
-    print(f"Hand-off: {hand_offs}/{totale_rounds} ({hand_offs/totale_rounds*100:.1f}%)")
-    print(f"Patte: {totale_rounds-hand_offs}/{totale_rounds} ({(totale_rounds-hand_offs)/totale_rounds*100:.1f}%)")
+            total_moves += r["moves"]
+            if r["receiver"] is not None:
+                handoffs += 1
+
+    print(f"Wins A ({type_a}): {wins['A']} ({wins['A']/n_matches*100:.1f}%)")
+    print(f"Wins B ({type_b}): {wins['B']} ({wins['B']/n_matches*100:.1f}%)")
+    print(f"\nAvg rounds per match: {total_rounds/n_matches:.1f}")
+    print(f"Avg moves per round: {total_moves/total_rounds:.1f}")
+    print(f"Hand-offs: {handoffs}/{total_rounds} ({handoffs/total_rounds*100:.1f}%)")
+    print(f"Draws: {total_rounds-handoffs}/{total_rounds} ({(total_rounds-handoffs)/total_rounds*100:.1f}%)")
 
 # ========== MAIN ==========
 if __name__ == "__main__":
-    print("=== TRIS AL CONTRARIO - Flip + Passa-Punto ===")
-    print("Versione Bilanciata (Fix Starter + Trappola Doppia)\n")
-    print("Modalità disponibili:")
-    print("1. Umano vs IA Offensiva")
-    print("2. IA Random vs IA Difensiva (demo)")
-    print("3. IA Offensiva vs IA Offensiva (demo)")
-    print("4. Benchmark (100 partite)")
-    print("5. Benchmark ESTESO (1000 partite) - consigliato per test finale")
-    
-    scelta = input("\nScegli modalità [1-5]: ").strip()
-    
-    if scelta == "1":
-        partita(tipo_a="umano", tipo_b="offensiva")
-    elif scelta == "2":
-        partita(tipo_a="random", tipo_b="difensiva")
-    elif scelta == "3":
-        partita(tipo_a="offensiva", tipo_b="offensiva")
-    elif scelta == "4":
+    print("=== REVERSE TRIS — Flip + Pass-the-Point ===")
+    print("Balanced Version (Starter Fix + Double Trap)\n")
+    print("Available modes:")
+    print("1. Human vs Offensive AI")
+    print("2. Random AI vs Defensive AI (demo)")
+    print("3. Offensive AI vs Offensive AI (demo)")
+    print("4. Benchmark (100 matches)")
+    print("5. EXTENDED Benchmark (1000 matches) — recommended for final testing")
+
+    choice = input("\nChoose mode [1-5]: ").strip()
+
+    if choice == "1":
+        # Run standard match
+        winner, _log = match(type_a="human", type_b="offensive")
+        # Count HUMAN match wins (not rounds).
+        # In 'match', returning "A" means player A (Human) wins.
+        if winner == "A":
+            # Update session counter
+            HUMAN_WINS_VS_OFFENSIVE += 1
+            print(f"\n[RIDDLE] Human wins recorded (Mode 1): {HUMAN_WINS_VS_OFFENSIVE}/3")
+            if HUMAN_WINS_VS_OFFENSIVE >= 3:
+                show_riddle_resolution()
+        else:
+            if winner is None:
+                print("\n[RIDDLE] Match interrupted. No progress toward the riddle.")
+            else:
+                print("\n[RIDDLE] The AI won this match. Try again to unlock the riddle!")
+    elif choice == "2":
+        match(type_a="random", type_b="defensive")
+    elif choice == "3":
+        match(type_a="offensive", type_b="offensive")
+    elif choice == "4":
         print("\n--- Test 1: Random vs Random ---")
         benchmark("random", "random", 100)
-        print("\n--- Test 2: Difensiva vs Random ---")
-        benchmark("difensiva", "random", 100)
-        print("\n--- Test 3: Offensiva vs Difensiva ---")
-        benchmark("offensiva", "difensiva", 100)
-        print("\n--- Test 4: Offensiva vs Offensiva ---")
-        benchmark("offensiva", "offensiva", 100)
-    elif scelta == "5":
-        print("\n🚀 BENCHMARK ESTESO (1000 partite)")
+        print("\n--- Test 2: Defensive vs Random ---")
+        benchmark("defensive", "random", 100)
+        print("\n--- Test 3: Offensive vs Defensive ---")
+        benchmark("offensive", "defensive", 100)
+        print("\n--- Test 4: Offensive vs Offensive ---")
+        benchmark("offensive", "offensive", 100)
+    elif choice == "5":
+        print("\n🚀 EXTENDED BENCHMARK (1000 matches)")
         print("\n--- Test 1: Random vs Random ---")
         benchmark("random", "random", 1000)
-        print("\n--- Test 2: Difensiva vs Random ---")
-        benchmark("difensiva", "random", 1000)
-        print("\n--- Test 3: Offensiva vs Difensiva ---")
-        benchmark("offensiva", "difensiva", 1000)
-        print("\n--- Test 4: Offensiva vs Offensiva ---")
-        benchmark("offensiva", "offensiva", 1000)
+        print("\n--- Test 2: Defensive vs Random ---")
+        benchmark("defensive", "random", 1000)
+        print("\n--- Test 3: Offensive vs Defensive ---")
+        benchmark("offensive", "defensive", 1000)
+        print("\n--- Test 4: Offensive vs Offensive ---")
+        benchmark("offensive", "offensive", 1000)
     else:
-        print("Scelta non valida. Avvio partita Umano vs IA.")
-        partita(tipo_a="umano", tipo_b="offensiva")
+        print("Invalid choice. Starting Human vs AI match.")
+        winner, _ = match(type_a="human", type_b="offensive")
+        if winner == "A":
+            HUMAN_WINS_VS_OFFENSIVE += 1
+            print(f"\n[RIDDLE] Human wins recorded (Mode 1): {HUMAN_WINS_VS_OFFENSIVE}/3")
+            if HUMAN_WINS_VS_OFFENSIVE >= 3:
+                show_riddle_resolution()

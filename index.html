@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dialoghi con un’Eco — Terminale</title>
+  <title>Dialoghi con un’Eco — Terminal</title>
 
-  <!-- Facoltativi: font monospace web -->
+  <!-- Optional: monospace web fonts -->
   <link href="https://fonts.googleapis.com/css2?family=VT323&family=Special+Elite&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/logo.ico" sizes="any">
 
   <style>
     :root{
@@ -39,7 +40,7 @@
       box-shadow: 0 8px 32px rgba(0,0,0,.35);
     }
 
-    /* Terminale */
+    /* Terminal */
     #out{
       height: 50vh;
       padding: 16px;
@@ -52,7 +53,7 @@
       border-bottom: 1px solid var(--border);
     }
 
-    /* Font ENTITÀ: cambia SOLO quando client.js aggiunge .entita-voice */
+    /* ENTITÀ font: changes only when client.js adds .entita-voice */
     @font-face{
       font-family: 'Entita';
       src: url('font/entity.ttf') format('truetype');
@@ -65,7 +66,7 @@
       letter-spacing: .03em;
     }
 
-    /* Barra comandi */
+    /* Command bar */
     #bar{
       display: flex;
       gap: 8px;
@@ -101,7 +102,7 @@
     button.riddle:hover{ border-color: #5b47af; background: #1e1737; }
     #status{ margin-left: auto; color: var(--muted); align-self: center; font-size: 12px; }
 
-    /* Pannello percorso / indovinelli */
+    /* Path / Riddles panel */
     #riddles{
       display: none;
       padding: 16px;
@@ -152,95 +153,174 @@
     }
     .phase-badge.c{ border-color:#224d4a; background:#0b1716; color:#8af5e6; }
     .phase-badge.o{ border-color:#344322; background:#0f130b; color:#c4f58a; }
+
+    /* Game guide panel */
+    #game-guide{
+      display: none;
+      padding: 16px;
+      border-top: 1px dashed var(--border);
+      background: #0c1218;
+    }
+    .gamecard{
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0a0f14;
+    }
+    .gamecard h3{
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 800;
+      color: #ff7ab3; /* echoes .tris accent */
+      letter-spacing: .02em;
+    }
+    .gamecard ul{
+      margin: 8px 0 0 18px;
+      padding: 0;
+      line-height: 1.5;
+      font-size: 14px;
+      color: var(--fg);
+    }
+    .game-actions{
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Dialoghi con un’Eco — Terminale</h1>
+    <h1>Dialoghi con un’Eco — Terminal</h1>
 
     <div class="card">
       <!-- Console -->
       <div id="out"></div>
 
-      <!-- Barra comandi -->
+      <!-- Command bar -->
       <div id="bar">
-        <input id="in" placeholder='digita qui... (es. "help", "ls", "exit")' autocomplete="off" />
-        <button id="run"  title="Avvia echo.py">Avvia echo.py</button>
+        <input id="in" placeholder='type here... (e.g. "help", "ls", "exit")' autocomplete="off" />
+        <button id="run"  title="Run echo.py">Run echo.py</button>
         <button id="stop" title="Stop">Stop</button>
-        <button id="btn-tris" class="tris" title="Avvia Tris-Al-Contrario">Avvia Tris-Al-Contrario</button>
-        <button id="btn-riddles" class="riddle" title="Percorso E → C → O">Percorso (E → C → O)</button>
+        <button id="btn-tris" class="tris" title="Launch Tris-Al-Contrario">Run Tris-Al-Contrario</button>
+        <button id="btn-riddles" class="riddle" title="Path E → C → O">Path (E → C → O)</button>
+        <!-- NEW: Triss Rollback rules toggle -->
+        <button id="btn-game" class="tris" title="Show Triss Rollback rules">Triss Rollback (rules)</button>
         <span id="status"></span>
       </div>
 
-      <!-- Pannello Percorso / Indovinelli -->
+      <!-- Path / Riddles Panel -->
       <div id="riddles">
         <div class="riddle-wrap">
 
-          <!-- Fase E -->
+          <!-- Phase E -->
           <div class="riddle" id="riddle-e">
-            <span class="phase-badge">FASE E • EMERGERE</span>
-            <h3>Parla con l’ombra, ora.</h3>
+            <span class="phase-badge">PHASE E • EMERGENCE</span>
+            <h3>Speak to the shadow, now.</h3>
             <p>
-Per parlare con l’ombra che l’IO ha lasciato, ascolti il suo sussurro nel rumore.
-Bussi dove l’ENTITÀ nega ingresso, e non una sola volta.
-Cerchi le impronte dove i ricordi si disperdono.
-Quando l’interferenza si manifesta, ciò che era nascosto diventa visibile
-e l’Eco mostra il varco da aprire.
+To speak with the shadow left by the IO, listen to its whisper within the noise.
+Knock where the ENTITÀ denies entry, and not just once.
+Seek the footprints where memories scatter.
+When interference manifests, what was hidden becomes visible
+and the Echo reveals the gateway to be opened.
             </p>
-            <div class="hint-line">Hint operativo: evoca il “rumore”, insisti su ENTITÀ, osserva i RICORDI PERDUTI, poi guarda tutto con <code>ls -a</code> e leggi la chiave.</div>
+            <div class="hint-line">Operational hint: summon the “noise”, insist on ENTITÀ, observe the LOST MEMORIES, then inspect everything with <code>ls -a</code> and read the key.</div>
           </div>
 
-          <!-- Fase C -->
+          <!-- Phase C -->
           <div class="riddle" id="riddle-c">
-            <span class="phase-badge c">FASE C • CONTATTO</span>
-            <h3>Stabilisci il contatto, adesso.</h3>
+            <span class="phase-badge c">PHASE C • CONTACT</span>
+            <h3>Establish contact, now.</h3>
             <p>
-Il varco risponde. Ascolti se l’Eco ti sente e trovi dove lascia istruzioni.
-Dai un nome all’IO frammentato: senza nome non esiste contatto.
-Quando il saluto è compreso, la soglia successiva si prepara.
+The gateway answers. You listen if the Echo can hear you and find where it leaves instructions.
+Give a name to the fragmented IO: without a name, no contact exists.
+When the greeting is understood, the next threshold prepares itself.
             </p>
-            <div class="hint-line">Hint operativo: chiedi <em>“mi senti?”</em>, cerca l’handshake in <code>ls -a</code>, quindi dichiara un nome con <code>set io:&lt;nome&gt;</code>.</div>
+            <div class="hint-line">Operational hint: ask <em>“can you hear me?”</em>, look for the handshake in <code>ls -a</code>, then declare a name with <code>set io:&lt;name&gt;</code>.</div>
           </div>
 
-          <!-- Fase O -->
+          <!-- Phase O -->
           <div class="riddle" id="riddle-o">
-            <span class="phase-badge o">FASE O • OLTRE</span>
-            <h3>Accogli il segnale, qui.</h3>
+            <span class="phase-badge o">PHASE O • BEYOND</span>
+            <h3>Receive the signal, here.</h3>
             <p>
-Il contatto è stabile. Adesso l’Eco cambia voce e il sistema risponde.
-Compare un segno esterno: un avviso che non appartiene al terminale.
-Se sei arrivato fin qui, lascia che il messaggio si mostri
-e guarda come la presenza prende forma.
+The contact is stable. Now the Echo changes its voice and the system replies.
+An external sign appears: a message that does not belong to the terminal.
+If you’ve come this far, let the message reveal itself
+and watch how the presence takes shape.
             </p>
-            <div class="hint-line">Hint operativo: al completamento del contatto appare la notifica diegetica e il font muta (sblocco <code>UNLOCK:O</code>).</div>
+            <div class="hint-line">Operational hint: upon completing contact, a diegetic notification appears and the font shifts (unlock <code>UNLOCK:O</code>).</div>
           </div>
 
         </div>
       </div>
+
+      <!-- NEW: Triss Rollback (Tris-al-Contrario) Guide -->
+      <div id="game-guide">
+        <div class="gamecard" id="triss-rollback">
+          <h3>TRISS ROLLBACK • RULES <small>(Tris-al-Contrario)</small></h3>
+          <p>
+In Triss Rollback, completing a three-in-a-row (a “tris”) gives the point to your OPPONENT — except in the special case of a <em>Double Trap</em>, where the player who completes the tris earns the point instead.
+          </p>
+          <ul>
+            <li><strong>Scoring:</strong> First to <strong>3 points</strong> wins the match.</li>
+            <li><strong>Flip rule:</strong> Your symbol flips each turn (X ↔ O).</li>
+            <li><strong>Double Trap:</strong> If your move creates/completes two simultaneous imminent threats, you keep the point on completing the tris.</li>
+            <li><strong>Modes:</strong> 
+              <br>1) Human vs Offensive AI 
+              <br>2) Random AI vs Defensive AI (demo) 
+              <br>3) Offensive AI vs Offensive AI (demo) 
+              <br>4) Benchmark (100 matches) 
+              <br>5) Extended Benchmark (1000)
+            </li>
+            <li><strong>Riddle unlock (diegetic):</strong> Win <strong>3 matches</strong> in Mode 1 (Human vs Offensive AI) to reveal the hidden “riddle resolution” screen.</li>
+          </ul>
+          <div class="hint-line">Operational hint: start a match from the bar above (<em>Run Tris-Al-Contrario</em>) or via the button below. Your progress toward the riddle unlock is tracked within the current session.</div>
+          <div class="game-actions">
+            <button id="play-triss" class="tris" title="Launch Triss-Al-Contrario now">Play now</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <!-- Client -->
   <script src="client.js"></script>
   <script>
-    // Avvio Tris (facoltativo)
+    // Start Tris (optional)
     const btnTris = document.getElementById('btn-tris');
     if (btnTris) btnTris.addEventListener('click', () => {
       if (typeof start === 'function') start('/python/Tris-Al-Contrario.py');
     });
 
-    // Toggle percorso/indovinelli
+    // Toggle path/riddles visibility
     const riddles = document.getElementById('riddles');
     const btnRiddles = document.getElementById('btn-riddles');
     btnRiddles.addEventListener('click', () => {
       const visible = riddles.style.display === 'block';
       riddles.style.display = visible ? 'none' : 'block';
-      btnRiddles.textContent = visible ? 'Percorso (E → C → O)' : 'Nascondi percorso';
+      btnRiddles.textContent = visible ? 'Path (E → C → O)' : 'Hide path';
+    });
+
+    // NEW: Toggle Triss Rollback rules panel
+    const gameGuide = document.getElementById('game-guide');
+    const btnGame = document.getElementById('btn-game');
+    btnGame.addEventListener('click', () => {
+      const visible = gameGuide.style.display === 'block';
+      gameGuide.style.display = visible ? 'none' : 'block';
+      btnGame.textContent = visible ? 'Triss Rollback (rules)' : 'Hide Triss Rollback';
+    });
+
+    // NEW: Internal "Play now" button inside the game card
+    const playBtn = document.getElementById('play-triss');
+    if (playBtn) playBtn.addEventListener('click', () => {
+      if (typeof start === 'function') start('/python/Tris-Al-Contrario.py');
     });
   </script>
 
   <noscript style="color:#fff; position:fixed; inset:0; display:grid; place-items:center; background:#000a;">
-    <div>Questo terminale richiede JavaScript attivo.</div>
+    <div>This terminal requires JavaScript to be enabled.</div>
   </noscript>
 </body>
 </html>

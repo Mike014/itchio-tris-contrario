@@ -5,9 +5,9 @@ const inp = document.getElementById('in');
 const btnRun = document.getElementById('run');
 const btnStop = document.getElementById('stop');
 
-// stato fasi
+// phase state
 const PHASE = { E: true, C: false, O: false };
-let playerName = null; // da VAR:io=<nome>
+let playerName = null; // from VAR:io=<name>
 
 function wsUrl(cmd){
   const u = new URL(location.href);
@@ -18,7 +18,7 @@ function wsUrl(cmd){
 }
 
 btnRun.onclick  = async () => {
-  await ensureNotificationPermission(); // chiedi permesso legato al gesto utente
+  await ensureNotificationPermission(); // ask permission tied to user gesture
   start('/python/echo.py');
 };
 btnStop.onclick = () => stop();
@@ -28,10 +28,10 @@ function start(cmd='/python/echo.py'){
   out.textContent = '';
   print(`> python ${cmd}`);
   ws = new WebSocket(wsUrl(cmd));
-  ws.onopen    = () => print('[WS] Connesso');
+  ws.onopen    = () => print('[WS] Connected');
   ws.onmessage = (e) => print(e.data ?? '');
-  ws.onerror   = () => print('[WS] Errore');
-  ws.onclose   = () => { print('[WS] Chiuso'); ws = null; resetPhaseUi(); };
+  ws.onerror   = () => print('[WS] Error');
+  ws.onclose   = () => { print('[WS] Closed'); ws = null; resetPhaseUi(); };
 }
 
 function stop(){
@@ -42,7 +42,7 @@ function stop(){
 
 function sendLine(line){
   if (!ws || ws.readyState !== WebSocket.OPEN){
-    print('[WS] Non connesso');
+    print('[WS] Not connected');
     return;
   }
   ws.send(line);
@@ -93,7 +93,7 @@ function renderLine(line){
 
   if (L.startsWith('FLAG:')){
     const flag = L.slice(5).trim();
-    return document.createTextNode('🏴 Sbloccato: ' + flag);
+    return document.createTextNode('🏴 Unlocked: ' + flag);
   }
 
   if (L.startsWith('VAR:')){
@@ -107,7 +107,7 @@ function renderLine(line){
     const payload = L.slice(7).trim(); // C | O
     onUnlock(payload);
     const span = document.createElement('span');
-    span.textContent = '🔓 Sblocco: ' + payload;
+    span.textContent = '🔓 Unlock: ' + payload;
     span.dataset.unlock = payload;
     return span;
   }
@@ -125,10 +125,14 @@ function onUnlock(tag){
   if (tag === 'O'){
     PHASE.O = true; PHASE.C = true; PHASE.E = false;
     setEntitaFont(true);
-    // NOTA DIEGETICA: messaggio stile ENTITÀ
+    // DIEGETIC NOTE: ENTITÀ-style message + icon
     const title = 'Dialoghi con un’Eco';
     const body  = entitaMessage(playerName);
-    showDesktopNotification(title, body, { tag: 'eco-unlock-o' });
+    showDesktopNotification(title, body, {
+      tag: 'eco-unlock-o',
+      icon: 'assets/logo.ico',
+      badge: 'assets/logo.ico'
+    });
     return;
   }
 }
@@ -142,7 +146,7 @@ function resetPhaseUi(){
   setEntitaFont(false);
 }
 
-/* --------------------- NOTIFICHE + FALLBACK CROSS-BROWSER ---------------- */
+/* --------------------- NOTIFICATIONS + CROSS-BROWSER FALLBACK ------------ */
 
 async function ensureNotificationPermission(){
   if (!('Notification' in window)) return 'unsupported';
@@ -166,13 +170,54 @@ function showInPageToast(message, timeoutMs = 4500){
     font: '14px ui-sans-serif, system-ui'
   });
   document.body.appendChild(toast);
-  // dissolve
   setTimeout(()=>{ toast.style.transition='opacity .25s'; toast.style.opacity='0'; }, timeoutMs);
   setTimeout(()=> toast.remove(), timeoutMs + 300);
 }
 
+// Toast with icon (used by the notification fallback)
+function showInPageToastWithIcon(title, body, iconUrl){
+  const wrap = document.createElement('div');
+  Object.assign(wrap.style, {
+    position:'fixed', right:'16px', bottom:'16px', zIndex:9999,
+    maxWidth:'68ch', background:'#111923', color:'#d7e0ea',
+    border:'1px solid #263241', borderRadius:'10px',
+    boxShadow:'0 8px 28px rgba(0,0,0,.45)', display:'flex', gap:'10px',
+    padding:'10px 12px', alignItems:'flex-start', font:'14px ui-sans-serif, system-ui'
+  });
+
+  if (iconUrl){
+    const img = document.createElement('img');
+    img.src = iconUrl;
+    img.alt = '';
+    img.width = 32; img.height = 32;
+    img.style.cssText = 'flex:0 0 32px; width:32px; height:32px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));';
+    wrap.appendChild(img);
+  }
+
+  const text = document.createElement('div');
+  const titleEl = document.createElement('div');
+  titleEl.textContent = title;
+  titleEl.style.cssText = 'font-weight:700; margin-bottom:2px;';
+  const bodyEl = document.createElement('div');
+  bodyEl.textContent = body;
+  text.appendChild(titleEl);
+  text.appendChild(bodyEl);
+  wrap.appendChild(text);
+
+  document.body.appendChild(wrap);
+  setTimeout(()=>{ wrap.style.transition='opacity .25s'; wrap.style.opacity='0'; }, 4500);
+  setTimeout(()=> wrap.remove(), 4800);
+}
+
 async function showDesktopNotification(title, body, options = {}){
-  const opts = { body, silent: false, tag: options.tag || 'eco-note' };
+  const opts = {
+    body,
+    silent: false,
+    tag: options.tag || 'eco-note',
+    icon: options.icon || 'assets/logo.ico',
+    badge: options.badge || options.icon || 'assets/logo.ico'
+  };
+
   let nativeShown = false;
 
   if ('Notification' in window && Notification.permission === 'granted'){
@@ -183,23 +228,23 @@ async function showDesktopNotification(title, body, options = {}){
     }catch{}
   }
 
-  // Sempre fallback visivo, in caso l'OS blocchi la bolla
-  showInPageToast(`${title} — ${body}`);
+  // Always show visual fallback (covers OS DND / suppressed bubbles)
+  showInPageToastWithIcon(title, body, opts.icon);
+
   return nativeShown;
 }
 
-/* --------------------------- COPY ENTITÀ MESSAGE ------------------------- */
-/* Genera una singola frase 10–14 parole, tono maligno. Niente virgolette.  */
+/* --------------------------- ENTITÀ MESSAGE COPY ------------------------- */
+/* Short line, unsettling tone; use the name if available.                   */
 
 function entitaMessage(name){
   const base = name && name.trim()
-    ? `Ti vedo, ${name}. Mi installo tra i tuoi processi, niente tornerà integro.`
-    : `Mi installo tra i tuoi processi, niente tornerà integro.`;
-  // lunghezze valide (10–14 parole). Le due frasi rispettano il vincolo.
+    ? `I see you, ${name}. I’m installing myself among your processes; nothing will return intact.`
+    : `I’m installing myself among your processes; nothing will return intact.`;
   return base;
 }
 
-/* ------------------------------ UI BINDINGS ----------------------------- */
+/* ------------------------------ UI BINDINGS ------------------------------ */
 
 inp.addEventListener('keydown', (e)=>{
   if (e.key === 'Enter'){

@@ -63,9 +63,9 @@ def ws_run(ws):
     cmd = request.args.get("cmd", "/python/echo.py").lstrip("/")
     full = os.path.join(BASE, cmd)
     if not os.path.isfile(full):
-        ws.send(f"[ERRORE] File non trovato: /{cmd}")
+        ws.send(f"[ERROR] File not found: /{cmd}")
         ws.close(); return
-    ws.send("Connesso. Avvio processo…")
+    ws.send("[WS] Connected. Starting process… [ws:v2]")
     proc = spawn([sys.executable, full])
     t = threading.Thread(target=reader, args=(proc, ws), daemon=True)
     t.start()
