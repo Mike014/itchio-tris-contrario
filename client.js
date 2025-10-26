@@ -5,8 +5,8 @@ const inp = document.getElementById('in');
 const btnRun = document.getElementById('run');
 const btnStop = document.getElementById('stop');
 
-// stato semplice per sblocchi
-const PHASE = { E: true, C: false, O: false }; // E parte attiva per default
+// stato fasi
+const PHASE = { E: true, C: false, O: false };
 let playerName = null; // da VAR:io=<nome>
 
 function wsUrl(cmd){
@@ -16,6 +16,12 @@ function wsUrl(cmd){
   u.search = '?cmd=' + encodeURIComponent(cmd);
   return u.href;
 }
+
+btnRun.onclick  = async () => {
+  await ensureNotificationPermission(); // chiedi permesso legato al gesto utente
+  start('/python/echo.py');
+};
+btnStop.onclick = () => stop();
 
 function start(cmd='/python/echo.py'){
   if (ws) return;
@@ -50,7 +56,7 @@ function print(s){
   for (const line of lines){
     const node = renderLine(line);
     if (node === null){
-      // segnale CLEAR
+      // CLEAR
       out.textContent = '';
       continue;
     }
@@ -69,10 +75,8 @@ function renderLine(line){
   const L = raw.trim();
   if (!L) return document.createTextNode('');
 
-  // CLEAR:
   if (L.startsWith('CLEAR:')) return null;
 
-  // LINK:
   if (L.startsWith('LINK:')){
     const url = L.slice(5).trim();
     const span = document.createElement('span');
@@ -84,35 +88,23 @@ function renderLine(line){
     return span;
   }
 
-  // HINT:
-  if (L.startsWith('HINT:')){
-    return document.createTextNode('💡 ' + L.slice(5).trim());
-  }
+  if (L.startsWith('HINT:'))  return document.createTextNode('💡 ' + L.slice(5).trim());
+  if (L.startsWith('ALERT:')) return document.createTextNode('‼ ' + L.slice(6).trim());
 
-  // ALERT:
-  if (L.startsWith('ALERT:')){
-    return document.createTextNode('‼ ' + L.slice(6).trim());
-  }
-
-  // FLAG:
   if (L.startsWith('FLAG:')){
     const flag = L.slice(5).trim();
     return document.createTextNode('🏴 Sbloccato: ' + flag);
   }
 
-  // VAR: (es. VAR:io=<nome>)
   if (L.startsWith('VAR:')){
     const payload = L.slice(4).trim();
     const m = /^io\s*=\s*(.+)$/.exec(payload);
-    if (m) {
-      playerName = m[1].trim();
-    }
+    if (m) playerName = m[1].trim();
     return document.createTextNode('[VAR] ' + payload);
   }
 
-  // UNLOCK:
   if (L.startsWith('UNLOCK:')){
-    const payload = L.slice(7).trim(); // C | O | ecc.
+    const payload = L.slice(7).trim(); // C | O
     onUnlock(payload);
     const span = document.createElement('span');
     span.textContent = '🔓 Sblocco: ' + payload;
@@ -120,7 +112,6 @@ function renderLine(line){
     return span;
   }
 
-  // default: testo grezzo
   return document.createTextNode(raw);
 }
 
@@ -129,13 +120,15 @@ function renderLine(line){
 function onUnlock(tag){
   if (tag === 'C'){
     PHASE.C = true; PHASE.E = false;
-    // nessun cambio font qui — avviene solo su O
     return;
   }
   if (tag === 'O'){
     PHASE.O = true; PHASE.C = true; PHASE.E = false;
-    // cambia font quando la fase O è sbloccata (cioè dopo aver superato E e C)
     setEntitaFont(true);
+    // NOTA DIEGETICA: messaggio stile ENTITÀ
+    const title = 'Dialoghi con un’Eco';
+    const body  = entitaMessage(playerName);
+    showDesktopNotification(title, body, { tag: 'eco-unlock-o' });
     return;
   }
 }
@@ -145,15 +138,68 @@ function setEntitaFont(on){
 }
 
 function resetPhaseUi(){
-  // quando chiudiamo la WS, torniamo allo stato base
   PHASE.E = true; PHASE.C = false; PHASE.O = false;
   setEntitaFont(false);
 }
 
-/* ------------------------------ UI BINDINGS ----------------------------- */
+/* --------------------- NOTIFICHE + FALLBACK CROSS-BROWSER ---------------- */
 
-btnRun.onclick  = () => start('/python/echo.py');
-btnStop.onclick = () => stop();
+async function ensureNotificationPermission(){
+  if (!('Notification' in window)) return 'unsupported';
+  const perm = Notification.permission; // granted | denied | default
+  if (perm === 'default'){
+    try { return await Notification.requestPermission(); }
+    catch { return 'default'; }
+  }
+  return perm;
+}
+
+function showInPageToast(message, timeoutMs = 4500){
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  Object.assign(toast.style, {
+    position: 'fixed', right: '16px', bottom: '16px',
+    maxWidth: '60ch', padding: '10px 12px',
+    background: '#111923', color: '#d7e0ea',
+    border: '1px solid #263241', borderRadius: '10px',
+    boxShadow: '0 8px 28px rgba(0,0,0,.45)', zIndex: 9999,
+    font: '14px ui-sans-serif, system-ui'
+  });
+  document.body.appendChild(toast);
+  // dissolve
+  setTimeout(()=>{ toast.style.transition='opacity .25s'; toast.style.opacity='0'; }, timeoutMs);
+  setTimeout(()=> toast.remove(), timeoutMs + 300);
+}
+
+async function showDesktopNotification(title, body, options = {}){
+  const opts = { body, silent: false, tag: options.tag || 'eco-note' };
+  let nativeShown = false;
+
+  if ('Notification' in window && Notification.permission === 'granted'){
+    try{
+      const n = new Notification(title, opts);
+      n.onclick = () => window.focus();
+      nativeShown = true;
+    }catch{}
+  }
+
+  // Sempre fallback visivo, in caso l'OS blocchi la bolla
+  showInPageToast(`${title} — ${body}`);
+  return nativeShown;
+}
+
+/* --------------------------- COPY ENTITÀ MESSAGE ------------------------- */
+/* Genera una singola frase 10–14 parole, tono maligno. Niente virgolette.  */
+
+function entitaMessage(name){
+  const base = name && name.trim()
+    ? `Ti vedo, ${name}. Mi installo tra i tuoi processi, niente tornerà integro.`
+    : `Mi installo tra i tuoi processi, niente tornerà integro.`;
+  // lunghezze valide (10–14 parole). Le due frasi rispettano il vincolo.
+  return base;
+}
+
+/* ------------------------------ UI BINDINGS ----------------------------- */
 
 inp.addEventListener('keydown', (e)=>{
   if (e.key === 'Enter'){

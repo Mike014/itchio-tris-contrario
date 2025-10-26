@@ -3,29 +3,219 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Terminale Minimo</title>
+  <title>Dialoghi con un’Eco — Terminale</title>
 
-  <!-- Font (opzionale: già importati anche nel CSS) -->
+  <!-- Facoltativi: font monospace web -->
   <link href="https://fonts.googleapis.com/css2?family=VT323&family=Special+Elite&display=swap" rel="stylesheet" />
 
-  <!-- Stili -->
-  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    :root{
+      --bg: #0b0d10;
+      --fg: #d7e0ea;
+      --muted: #8aa0b6;
+      --card: #11161c;
+      --accent: #58a6ff;
+      --accent-2: #8b5cf6;
+      --accent-3: #22d3ee;
+      --border: #1f2937;
+      --ok: #10b981;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+    }
+    .container{ padding: 24px; max-width: 1100px; margin: 0 auto; }
+    h1{ margin: 0 0 16px 0; font-size: 20px; color: var(--fg); font-weight: 600; }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    }
+
+    /* Terminale */
+    #out{
+      height: 50vh;
+      padding: 16px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: #0d131a;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Font ENTITÀ: cambia SOLO quando client.js aggiunge .entita-voice */
+    @font-face{
+      font-family: 'Entita';
+      src: url('font/entity.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    #out.entita-voice{
+      font-family: 'Entita', ui-monospace, Menlo, Consolas, monospace;
+      letter-spacing: .03em;
+    }
+
+    /* Barra comandi */
+    #bar{
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      background: #0f141b;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    #in{
+      flex: 1 1 340px;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid #263241;
+      border-radius: 8px;
+      background: #0a0f14;
+      color: var(--fg);
+      outline: none;
+    }
+    #in::placeholder{ color: var(--muted); }
+    button{
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid #263241;
+      border-radius: 8px;
+      background: #111923;
+      color: var(--fg);
+      cursor: pointer;
+    }
+    button:hover{ border-color: #324559; background: #0f1822; }
+    button.tris{ border-color: #3a2337; background: #1a1219; color: #ff7ab3; }
+    button.tris:hover{ border-color: #5a2d50; background: #22131f; }
+    button.riddle{ border-color: #3b2c7a; background: #17122a; color: #c9b6ff; }
+    button.riddle:hover{ border-color: #5b47af; background: #1e1737; }
+    #status{ margin-left: auto; color: var(--muted); align-self: center; font-size: 12px; }
+
+    /* Pannello percorso / indovinelli */
+    #riddles{
+      display: none;
+      padding: 16px;
+      border-top: 1px dashed var(--border);
+      background: #0c1218;
+    }
+    .riddle-wrap{
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 900px){
+      .riddle-wrap{ grid-template-columns: 1fr 1fr 1fr; }
+    }
+    .riddle{
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0a0f14;
+    }
+    .riddle h3{
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-2);
+      letter-spacing: .02em;
+    }
+    .riddle h3 small{
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: .02em;
+    }
+    .riddle p{
+      margin: 0;
+      color: var(--fg);
+      line-height: 1.5;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .hint-line{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .phase-badge{
+      display:inline-block; margin-bottom:6px; padding:2px 8px; border-radius:999px;
+      font-size:11px; letter-spacing:.03em; font-weight:700; border:1px solid #2a3750; background:#0b1220; color:#a8c1ff;
+    }
+    .phase-badge.c{ border-color:#224d4a; background:#0b1716; color:#8af5e6; }
+    .phase-badge.o{ border-color:#344322; background:#0f130b; color:#c4f58a; }
+  </style>
 </head>
 <body>
-  <div class="container" style="padding:24px; max-width:1100px; margin:0 auto;">
-    <h1 class="h3" style="margin:0 0 16px 0;">Dialoghi con un’Eco — Terminale</h1>
+  <div class="container">
+    <h1>Dialoghi con un’Eco — Terminale</h1>
 
     <div class="card">
-      <!-- Terminale -->
+      <!-- Console -->
       <div id="out"></div>
 
       <!-- Barra comandi -->
       <div id="bar">
-        <input id="in" placeholder='digita qui... (es. "ciao", "exit")' />
-        <button id="run">Avvia echo.py</button>
-        <button id="stop">Stop</button>
-        <button id="btn-tris" class="tris">Avvia Tris-Al-Contrario</button>
-        <span id="status" style="margin-left:auto;"></span>
+        <input id="in" placeholder='digita qui... (es. "help", "ls", "exit")' autocomplete="off" />
+        <button id="run"  title="Avvia echo.py">Avvia echo.py</button>
+        <button id="stop" title="Stop">Stop</button>
+        <button id="btn-tris" class="tris" title="Avvia Tris-Al-Contrario">Avvia Tris-Al-Contrario</button>
+        <button id="btn-riddles" class="riddle" title="Percorso E → C → O">Percorso (E → C → O)</button>
+        <span id="status"></span>
+      </div>
+
+      <!-- Pannello Percorso / Indovinelli -->
+      <div id="riddles">
+        <div class="riddle-wrap">
+
+          <!-- Fase E -->
+          <div class="riddle" id="riddle-e">
+            <span class="phase-badge">FASE E • EMERGERE</span>
+            <h3>Parla con l’ombra, ora.</h3>
+            <p>
+Per parlare con l’ombra che l’IO ha lasciato, ascolti il suo sussurro nel rumore.
+Bussi dove l’ENTITÀ nega ingresso, e non una sola volta.
+Cerchi le impronte dove i ricordi si disperdono.
+Quando l’interferenza si manifesta, ciò che era nascosto diventa visibile
+e l’Eco mostra il varco da aprire.
+            </p>
+            <div class="hint-line">Hint operativo: evoca il “rumore”, insisti su ENTITÀ, osserva i RICORDI PERDUTI, poi guarda tutto con <code>ls -a</code> e leggi la chiave.</div>
+          </div>
+
+          <!-- Fase C -->
+          <div class="riddle" id="riddle-c">
+            <span class="phase-badge c">FASE C • CONTATTO</span>
+            <h3>Stabilisci il contatto, adesso.</h3>
+            <p>
+Il varco risponde. Ascolti se l’Eco ti sente e trovi dove lascia istruzioni.
+Dai un nome all’IO frammentato: senza nome non esiste contatto.
+Quando il saluto è compreso, la soglia successiva si prepara.
+            </p>
+            <div class="hint-line">Hint operativo: chiedi <em>“mi senti?”</em>, cerca l’handshake in <code>ls -a</code>, quindi dichiara un nome con <code>set io:&lt;nome&gt;</code>.</div>
+          </div>
+
+          <!-- Fase O -->
+          <div class="riddle" id="riddle-o">
+            <span class="phase-badge o">FASE O • OLTRE</span>
+            <h3>Accogli il segnale, qui.</h3>
+            <p>
+Il contatto è stabile. Adesso l’Eco cambia voce e il sistema risponde.
+Compare un segno esterno: un avviso che non appartiene al terminale.
+Se sei arrivato fin qui, lascia che il messaggio si mostri
+e guarda come la presenza prende forma.
+            </p>
+            <div class="hint-line">Hint operativo: al completamento del contatto appare la notifica diegetica e il font muta (sblocco <code>UNLOCK:O</code>).</div>
+          </div>
+
+        </div>
       </div>
     </div>
   </div>
@@ -33,16 +223,24 @@
   <!-- Client -->
   <script src="client.js"></script>
   <script>
-    // Attiva il bottone rosso per il Tris, se vuoi usarlo subito
+    // Avvio Tris (facoltativo)
     const btnTris = document.getElementById('btn-tris');
     if (btnTris) btnTris.addEventListener('click', () => {
-      // usa la stessa funzione del client: start('/python/Tris-Al-Contrario.py')
       if (typeof start === 'function') start('/python/Tris-Al-Contrario.py');
-      else {
-        // fallback per la versione attuale di client.js
-        const ev = new Event('click'); document.getElementById('run')?.dispatchEvent(ev);
-      }
+    });
+
+    // Toggle percorso/indovinelli
+    const riddles = document.getElementById('riddles');
+    const btnRiddles = document.getElementById('btn-riddles');
+    btnRiddles.addEventListener('click', () => {
+      const visible = riddles.style.display === 'block';
+      riddles.style.display = visible ? 'none' : 'block';
+      btnRiddles.textContent = visible ? 'Percorso (E → C → O)' : 'Nascondi percorso';
     });
   </script>
+
+  <noscript style="color:#fff; position:fixed; inset:0; display:grid; place-items:center; background:#000a;">
+    <div>Questo terminale richiede JavaScript attivo.</div>
+  </noscript>
 </body>
 </html>
