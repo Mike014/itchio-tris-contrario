@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terminale Minimo</title>
+
+  <!-- Font (opzionale: già importati anche nel CSS) -->
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Special+Elite&display=swap" rel="stylesheet" />
+
+  <!-- Stili -->
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="container" style="padding:24px; max-width:1100px; margin:0 auto;">
+    <h1 class="h3" style="margin:0 0 16px 0;">Dialoghi con un’Eco — Terminale</h1>
+
+    <div class="card">
+      <!-- Terminale -->
+      <div id="out"></div>
+
+      <!-- Barra comandi -->
+      <div id="bar">
+        <input id="in" placeholder='digita qui... (es. "ciao", "exit")' />
+        <button id="run">Avvia echo.py</button>
+        <button id="stop">Stop</button>
+        <button id="btn-tris" class="tris">Avvia Tris-Al-Contrario</button>
+        <span id="status" style="margin-left:auto;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client -->
+  <script src="client.js"></script>
+  <script>
+    // Attiva il bottone rosso per il Tris, se vuoi usarlo subito
+    const btnTris = document.getElementById('btn-tris');
+    if (btnTris) btnTris.addEventListener('click', () => {
+      // usa la stessa funzione del client: start('/python/Tris-Al-Contrario.py')
+      if (typeof start === 'function') start('/python/Tris-Al-Contrario.py');
+      else {
+        // fallback per la versione attuale di client.js
+        const ev = new Event('click'); document.getElementById('run')?.dispatchEvent(ev);
+      }
+    });
+  </script>
+</body>
+</html>
