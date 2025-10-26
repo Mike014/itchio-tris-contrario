@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0d10" />
   <title>Dialoghi con un’Eco — Terminal</title>
 
   <!-- Optional: monospace web fonts -->
@@ -20,6 +21,10 @@
       --accent-3: #22d3ee;
       --border: #1f2937;
       --ok: #10b981;
+      --space: 12px;
+      --radius: 12px;
+      --shadow: 0 8px 32px rgba(0,0,0,.35);
+      --btn-h: 44px; /* touch-friendly */
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -28,30 +33,35 @@
       background: var(--bg);
       color: var(--fg);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    .container{ padding: 24px; max-width: 1100px; margin: 0 auto; }
-    h1{ margin: 0 0 16px 0; font-size: 20px; color: var(--fg); font-weight: 600; }
+    .container{ padding: 24px; max-width: 1200px; margin: 0 auto; }
+    h1{ margin: 0 0 16px 0; font-size: clamp(18px, 2.2vw, 22px); color: var(--fg); font-weight: 600; }
 
     .card{
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: var(--radius);
       overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+      box-shadow: var(--shadow);
     }
 
     /* Terminal */
     #out{
-      height: 50vh;
+      /* Dynamic height: adapts to viewport minus bars */
+      height: min(60vh, calc(100vh - 260px));
       padding: 16px;
       overflow-y: auto;
       white-space: pre-wrap;
-      font-size: 14px;
-      line-height: 1.4;
+      font-size: clamp(13px, 1.6vw, 14px);
+      line-height: 1.45;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
       background: #0d131a;
       border-bottom: 1px solid var(--border);
     }
+    /* Accessibility: treat console as live log */
+    #out[role="log"]{ outline: none; }
 
     /* ENTITÀ font (toggled by client.js .entita-voice) */
     @font-face{
@@ -66,9 +76,9 @@
       letter-spacing: .03em;
     }
 
-    /* Command bar (now two rows) */
+    /* Command bar (two rows) */
     #bar{
-      padding: 12px;
+      padding: var(--space);
       background: #0f141b;
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -84,80 +94,92 @@
     #bar-bottom{
       display: flex;
       gap: 8px;
-      justify-content: center;   /* <- centered bottom row */
+      justify-content: center;   /* centered bottom row */
       padding-top: 8px;
       border-top: 1px dashed var(--border);
       flex-wrap: wrap;
     }
 
     #in{
-      flex: 1 1 340px;
-      height: 40px;
+      flex: 1 1 360px;
+      height: var(--btn-h);
       padding: 0 12px;
       border: 1px solid #263241;
       border-radius: 8px;
       background: #0a0f14;
       color: var(--fg);
       outline: none;
-      min-width: 240px;
+      min-width: 220px;
     }
     #in::placeholder{ color: var(--muted); }
 
     button{
-      height: 40px;
+      height: var(--btn-h);
       padding: 0 12px;
       border: 1px solid #263241;
       border-radius: 8px;
       background: #111923;
       color: var(--fg);
       cursor: pointer;
+      font-size: 14px;
     }
     button:hover{ border-color: #324559; background: #0f1822; }
+    button:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
     button.tris{ border-color: #3a2337; background: #1a1219; color: #ff7ab3; }
     button.tris:hover{ border-color: #5a2d50; background: #22131f; }
     button.riddle{ border-color: #3b2c7a; background: #17122a; color: #c9b6ff; }
     button.riddle:hover{ border-color: #5b47af; background: #1e1737; }
-    #status{ margin-left: auto; color: var(--muted); font-size: 12px; }
+    #status{ margin-left: auto; color: var(--muted); font-size: 12px; min-height: 1em; }
 
-    /* Path / Riddles panel */
-    #riddles{
+    /* Panels */
+    #riddles, #game-guide{
       display: none;
       padding: 16px;
       border-top: 1px dashed var(--border);
       background: #0c1218;
     }
+
     .riddle-wrap{
       display: grid;
       gap: 16px;
       grid-template-columns: 1fr;
     }
-    @media (min-width: 900px){
+    @media (min-width: 720px){
+      .riddle-wrap{ grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 1024px){
       .riddle-wrap{ grid-template-columns: 1fr 1fr 1fr; }
     }
-    .riddle{
+
+    .riddle, .gamecard{
       padding: 14px;
       border: 1px solid var(--border);
       border-radius: 10px;
       background: #0a0f14;
     }
-    .riddle h3{
+    .riddle h3, .gamecard h3{
       margin: 0 0 8px 0;
       font-size: 14px;
       font-weight: 700;
-      color: var(--accent-2);
       letter-spacing: .02em;
     }
-    .riddle h3 small{
-      color: var(--muted);
-      font-weight: 600;
-      letter-spacing: .02em;
-    }
-    .riddle p{
+    .riddle h3{ color: var(--accent-2); }
+    .gamecard h3{ color: #ff7ab3; }
+
+    .riddle p, .gamecard p{
       margin: 0;
       color: var(--fg);
-      line-height: 1.5;
+      line-height: 1.55;
       font-size: 14px;
       white-space: pre-wrap;
+    }
+    .gamecard ul{
+      margin: 8px 0 0 18px;
+      padding: 0;
+      line-height: 1.5;
+      font-size: 14px;
+      color: var(--fg);
     }
     .hint-line{
       color: var(--muted);
@@ -171,38 +193,33 @@
     .phase-badge.c{ border-color:#224d4a; background:#0b1716; color:#8af5e6; }
     .phase-badge.o{ border-color:#344322; background:#0f130b; color:#c4f58a; }
 
-    /* Game guide panel */
-    #game-guide{
-      display: none;
-      padding: 16px;
-      border-top: 1px dashed var(--border);
-      background: #0c1218;
-    }
-    .gamecard{
-      padding: 14px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: #0a0f14;
-    }
-    .gamecard h3{
-      margin: 0 0 8px 0;
-      font-size: 14px;
-      font-weight: 800;
-      color: #ff7ab3;
-      letter-spacing: .02em;
-    }
-    .gamecard ul{
-      margin: 8px 0 0 18px;
-      padding: 0;
-      line-height: 1.5;
-      font-size: 14px;
-      color: var(--fg);
-    }
     .game-actions{
       margin-top: 12px;
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+
+    /* Small screens: tighter vertical rhythm */
+    @media (max-width: 599px){
+      .container{ padding: 16px; }
+      #out{ height: min(55vh, calc(100vh - 240px)); }
+      #bar{ gap: 8px; }
+      #bar-top{ gap: 6px; }
+      button{ width: auto; }
+    }
+
+    /* Very small screens / landscape phones */
+    @media (max-width: 400px){
+      #in{ flex: 1 1 100%; }
+      #status{ flex: 1 0 100%; text-align: right; }
+      #out{ height: min(50vh, calc(100vh - 230px)); }
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      * { animation: none !important; transition: none !important; }
+      html { scroll-behavior: auto; }
     }
   </style>
 </head>
@@ -212,27 +229,27 @@
 
     <div class="card">
       <!-- Console -->
-      <div id="out"></div>
+      <div id="out" role="log" aria-live="polite" aria-atomic="false" tabindex="0"></div>
 
       <!-- Command bar (two rows) -->
-      <div id="bar">
+      <div id="bar" role="group" aria-label="Command bar">
         <!-- TOP ROW -->
         <div id="bar-top">
-          <input id="in" placeholder='type here... (e.g. "help", "ls", "exit")' autocomplete="off" />
-          <button id="run"  title="Run echo.py">Run echo.py</button>
-          <button id="stop" title="Stop">Stop</button>
-          <button id="btn-tris" class="tris" title="Launch Reverse Tic-Tac-Toe">Run Reverse Tic-Tac-Toe</button>
-          <span id="status"></span>
+          <input id="in" placeholder='type here... (e.g. "help", "ls", "exit")' autocomplete="off" aria-label="Terminal input" />
+          <button id="run"  title="Run echo.py" aria-label="Run echo.py">Run echo.py</button>
+          <button id="stop" title="Stop" aria-label="Stop">Stop</button>
+          <button id="btn-tris" class="tris" title="Launch Reverse Tic-Tac-Toe" aria-label="Run Reverse Tic-Tac-Toe">Run Reverse Tic-Tac-Toe</button>
+          <span id="status" aria-live="polite"></span>
         </div>
         <!-- BOTTOM ROW (centered) -->
         <div id="bar-bottom">
-          <button id="btn-riddles" class="riddle" title="Path E → C → O">Path (E → C → O)</button>
-          <button id="btn-game" class="tris" title="Show Reverse Tic-Tac-Toe rules">Reverse Tic-Tac-Toe (rules)</button>
+          <button id="btn-riddles" class="riddle" title="Path E → C → O" aria-expanded="false" aria-controls="riddles">Path (E → C → O)</button>
+          <button id="btn-game" class="tris" title="Show Reverse Tic-Tac-Toe rules" aria-expanded="false" aria-controls="game-guide">Reverse Tic-Tac-Toe (rules)</button>
         </div>
       </div>
 
       <!-- Path / Riddles Panel -->
-      <div id="riddles">
+      <div id="riddles" hidden>
         <div class="riddle-wrap">
           <!-- Phase E -->
           <div class="riddle" id="riddle-e">
@@ -276,7 +293,7 @@ and watch how the presence takes shape.
       </div>
 
       <!-- Reverse Tic-Tac-Toe Guide -->
-      <div id="game-guide">
+      <div id="game-guide" hidden>
         <div class="gamecard" id="Reverse Tic-Tac-Toe">
           <h3>Reverse Tic-Tac-Toe • RULES</h3>
           <p>
@@ -306,35 +323,39 @@ In Reverse Tic-Tac-Toe, completing a three-in-a-row (a “tris”) gives the poi
   </div>
 
   <!-- Client -->
-  <script src="client.js"></script>
+  <script defer src="client.js"></script>
   <script>
-    // Start game (optional)
+    // Start game
     const btnTris = document.getElementById('btn-tris');
     if (btnTris) btnTris.addEventListener('click', () => {
       if (typeof start === 'function') start('/python/Tris-Al-Contrario.py');
     });
 
-    // Toggle path/riddles visibility
+    // Toggle path/riddles visibility (with aria + hidden)
     const riddles = document.getElementById('riddles');
     const btnRiddles = document.getElementById('btn-riddles');
-    btnRiddles.addEventListener('click', () => {
+    btnRiddles?.addEventListener('click', () => {
       const visible = riddles.style.display === 'block';
       riddles.style.display = visible ? 'none' : 'block';
+      riddles.hidden = visible;
       btnRiddles.textContent = visible ? 'Path (E → C → O)' : 'Hide path';
+      btnRiddles.setAttribute('aria-expanded', String(!visible));
     });
 
-    // Toggle Reverse Tic-Tac-Toe rules panel
+    // Toggle Reverse Tic-Tac-Toe rules panel (with aria + hidden)
     const gameGuide = document.getElementById('game-guide');
     const btnGame = document.getElementById('btn-game');
-    btnGame.addEventListener('click', () => {
+    btnGame?.addEventListener('click', () => {
       const visible = gameGuide.style.display === 'block';
       gameGuide.style.display = visible ? 'none' : 'block';
+      gameGuide.hidden = visible;
       btnGame.textContent = visible ? 'Reverse Tic-Tac-Toe (rules)' : 'Hide Reverse Tic-Tac-Toe';
+      btnGame.setAttribute('aria-expanded', String(!visible));
     });
 
     // Internal "Play now" button
     const playBtn = document.getElementById('play-triss');
-    if (playBtn) playBtn.addEventListener('click', () => {
+    playBtn?.addEventListener('click', () => {
       if (typeof start === 'function') start('/python/Tris-Al-Contrario.py');
     });
   </script>
