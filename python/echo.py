@@ -388,5 +388,11 @@ if __name__ == "__main__":
             if raw.strip().lower() in {"exit","quit"}:
                 break
             continue
-        # pure echo
-        print(raw, flush=True)
+        # pure echo  -> sostituito: non “echoa” più testo arbitrario
+        unknown = raw.strip()
+        if unknown:
+            out_alert(f"bash:{unknown} command not found")
+
+
+
+

@@ -22,7 +22,18 @@ How you got here:
 - To win a MATCH you need 3 points. Here, the human defeated the Offensive AI
   across 3 matches in this mode during the current session.
 
-[Put the final textual SOLUTION of the riddle here]
+open entita:noise
+cd entita
+cd entita
+cd lost_memories
+ls -a
+cat .key
+open_gateway
+help
+ls -a
+can_you_hear_me
+set io:miky
+
 """
 
 def show_riddle_resolution():
